@@ -30,3 +30,23 @@
 *.exe
 *.out
 *.app
+
+######### CMAKE ##########
+CMakeCache.txt
+CMakeFiles
+CMakeScripts
+Testing
+Makefile
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+
+######### Pastas de Build ##########
+build
+release
+debug
+
+######## DESSE PROJETO ######
+done
+cropped
