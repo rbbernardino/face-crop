@@ -13,8 +13,7 @@ namespace fs = std::experimental::filesystem;
 //-----------------------------------------------------------------------------
 const int recWidth = 50;
 const int recHeight = 20;
-const Scalar defaultColor  = CV_RGB(141, 139, 155);
-const Scalar selectedColor = CV_RGB(144, 0, 255);
+const Scalar rectColor = CV_RGB(144, 0, 255);
 
 //const Size IMG_WIN_SIZE = Size(1080, 1920);
 const Size IMG_WIN_SIZE = Size(800, 800);
@@ -258,11 +257,10 @@ int CropFile(fs::path IN_fpath) {
 	    break;
 
 	    // troca orientação do retângulo selecionado
-	case '\t': // TAB
-	    ToggleRectOrientation(rectToCrop);
-	    UpdateMainWindow();
-	    UpdatePreviewWindow();
-	    break;
+	// case '\t': // TAB // TODO
+	//     UpdateMainWindow();
+	//     UpdatePreviewWindow();
+	//     break;
 
 	    // alterna entre modes
 	// case 'z': // z // TODO 
@@ -478,7 +476,7 @@ void InitializeRectangles() {
     // NorthWest
     ptX = 0;
     ptY = 0;
-    rectToCrop = NbcRect(ptX, ptY, recWidth, recHeight, defaultColor);
+    rectToCrop = NbcRect(ptX, ptY, recWidth, recHeight, rectColor);
 }
 
 void UpdateMainWindow() {
@@ -498,7 +496,7 @@ void UpdateMainWindow() {
     UpdatePreviewWindow();
 }
 
-bool IsValidPos(NbcRect r, int movedX, int movedY) {
+bool IsValidPos(NbcRect &r, int movedX, int movedY) {
     // rectangle internal padding in order to surround crop area
     // movedX += 1;
     // movedY += 1;
@@ -512,14 +510,15 @@ bool IsValidPos(NbcRect r, int movedX, int movedY) {
     return true;
 }
 
-void MoveRect(NbcRect r, int movedX, int movedY) {
+void MoveRect(NbcRect &r, int movedX, int movedY) {
+    cout << rectToCrop.x << "|" << rectToCrop.y << endl;
     if(IsValidPos(r, movedX, movedY)) {
 	r.Move(movedX, movedY);
 	r.ResetStart();
     }
 }
 
-void MouseMoveRect(NbcRect r, Point mouseEnd) {
+void MouseMoveRect(NbcRect &r, Point mouseEnd) {
     // calcula amplitude do movimento
     int movedX = mouseEnd.x - mouseStart.x;
     int movedY = mouseEnd.y - mouseStart.y;
@@ -529,7 +528,7 @@ void MouseMoveRect(NbcRect r, Point mouseEnd) {
 	r.Move(movedX, movedY);
 }
 
-void SetRectPos(NbcRect r, Point pos) {
+void SetRectPos(NbcRect &r, Point pos) {
     int newX = pos.x - r.width/2;
     int newY = pos.y - r.height/2;
 
@@ -544,17 +543,6 @@ void SetRectPos(NbcRect r, Point pos) {
     else r.y = newY;
 
     r.ResetStart();
-}
-
-void ToggleRectOrientation(NbcRect r) {
-    if(r.width == recWidth) {
-	r.width = recHeight;
-	r.height = recWidth;
-    }
-    else { // r.widwth == recHeight
-	r.width = recWidth;
-	r.height = recHeight;
-    }
 }
 
 void UpdatePreviewWindow() {

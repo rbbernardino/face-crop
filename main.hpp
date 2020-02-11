@@ -28,11 +28,10 @@ void DrawRectangle(Mat img, NbcRect rect);
 
 void MouseHandler(int event, int x, int y, int flags, void* userdata);
 
-void MoveRect(NbcRect r, int movedX, int movedY);
-void MouseMoveRect(NbcRect r, Point mouseEnd);
-bool IsValidPos(NbcRect r, int movedX, int movedY);
-void SetRectPos(NbcRect r, Point pos);
-void ToggleRectOrientation(NbcRect r);
+void MoveRect(NbcRect &r, int movedX, int movedY);
+void MouseMoveRect(NbcRect &r, Point mouseEnd);
+bool IsValidPos(NbcRect &r, int movedX, int movedY);
+void SetRectPos(NbcRect &r, Point pos);
 
 void InitializeRectangles();
 void UpdateMainWindow();
