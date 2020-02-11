@@ -13,7 +13,8 @@ namespace fs = std::experimental::filesystem;
 //-----------------------------------------------------------------------------
 const int recWidth = 50;
 const int recHeight = 20;
-const Scalar rectColor = CV_RGB(144, 0, 255);
+const Scalar rectMovingColor = CV_RGB(144, 0, 255);
+const Scalar rectResizingColor = CV_RGB(242, 245, 66);
 
 //const Size IMG_WIN_SIZE = Size(1080, 1920);
 const Size IMG_WIN_SIZE = Size(800, 800);
@@ -55,6 +56,9 @@ bool negativeFilt = false;
 bool mousePressed = false;
 Point mouseStart;
 int mouseMoveUnit = 1;
+
+// keyboard related variables
+bool arrowsToIncreaseSize = false;
 
 // hold rectangles data
 NbcRect rectToCrop;
@@ -257,10 +261,11 @@ int CropFile(fs::path IN_fpath) {
 	    break;
 
 	    // troca orientação do retângulo selecionado
-	// case '\t': // TAB // TODO
-	//     UpdateMainWindow();
-	//     UpdatePreviewWindow();
-	//     break;
+	case '\t': // TAB
+	    arrowsToIncreaseSize = !arrowsToIncreaseSize;
+	    UpdateMainWindow();
+	    UpdatePreviewWindow();
+	    break;
 
 	    // alterna entre modes
 	// case 'z': // z // TODO 
@@ -270,25 +275,41 @@ int CropFile(fs::path IN_fpath) {
 	//     break;
 
 	case 82: // UP
-	    MoveRect(rectToCrop, 0, -1 * mouseMoveUnit);
+	    if(arrowsToIncreaseSize) {
+		DecreaseRectSize(RectSizeDirection::up, rectToCrop, mouseMoveUnit);
+	    } else {
+		MoveRect(rectToCrop, 0, -1 * mouseMoveUnit);
+	    }
 	    UpdateMainWindow();
 	    UpdatePreviewWindow();
 	    break;
 
 	case 84: // DOWN
-	    MoveRect(rectToCrop, 0, +1 * mouseMoveUnit);
+	    if(arrowsToIncreaseSize) {
+		IncreaseRectSize(RectSizeDirection::down, rectToCrop, mouseMoveUnit);
+	    } else {
+		MoveRect(rectToCrop, 0, +1 * mouseMoveUnit);
+	    }
 	    UpdateMainWindow();
 	    UpdatePreviewWindow();
 	    break;
 
 	case 81: // LEFT
-	    MoveRect(rectToCrop, -1 * mouseMoveUnit, 0);
+	    if(arrowsToIncreaseSize) {
+		DecreaseRectSize(RectSizeDirection::left, rectToCrop, mouseMoveUnit);
+	    } else {
+		MoveRect(rectToCrop, -1 * mouseMoveUnit, 0);
+	    }
 	    UpdateMainWindow();
 	    UpdatePreviewWindow();
 	    break;
 
 	case 83: // RIGHT
-	    MoveRect(rectToCrop, +1 * mouseMoveUnit, 0);
+	    if(arrowsToIncreaseSize) {
+		IncreaseRectSize(RectSizeDirection::right, rectToCrop, mouseMoveUnit);
+	    } else {
+		MoveRect(rectToCrop, +1 * mouseMoveUnit, 0);
+	    }
 	    UpdateMainWindow();
 	    UpdatePreviewWindow();
 	    break;
@@ -452,6 +473,9 @@ void MouseHandler(int event, int x, int y, int flags, void* userdata) {
 	break;
 
     case EVENT_LBUTTONUP:
+	mousePressed = false;
+	rectToCrop.ResetStart();
+	UpdateMainWindow();
 	break;
 
     case EVENT_MOUSEMOVE:
@@ -476,10 +500,16 @@ void InitializeRectangles() {
     // NorthWest
     ptX = 0;
     ptY = 0;
-    rectToCrop = NbcRect(ptX, ptY, recWidth, recHeight, rectColor);
+    rectToCrop = NbcRect(ptX, ptY, recWidth, recHeight, rectMovingColor);
 }
 
 void UpdateMainWindow() {
+    // highlights rectangle to identify arrow keys mode
+    if(arrowsToIncreaseSize)
+	rectToCrop.color = rectResizingColor;
+    else
+	rectToCrop.color = rectMovingColor;
+
     //---------------------------------
     // first updates imgMarked
     imgMarked = imgOriginal.clone();
@@ -496,7 +526,17 @@ void UpdateMainWindow() {
     UpdatePreviewWindow();
 }
 
-bool IsValidPos(NbcRect &r, int movedX, int movedY) {
+bool IsValidPos(NbcRect r) {
+    bool notValidX = r.x + r.width  >= imgMarked.cols || r.x < 0;
+    bool notValidY = r.y + r.height >= imgMarked.rows || r.y < 0;
+
+    if(notValidX || notValidY)
+	return false;
+
+    return true;
+}
+
+bool IsValidPos(NbcRect r, int movedX, int movedY) {
     // rectangle internal padding in order to surround crop area
     // movedX += 1;
     // movedY += 1;
@@ -511,7 +551,6 @@ bool IsValidPos(NbcRect &r, int movedX, int movedY) {
 }
 
 void MoveRect(NbcRect &r, int movedX, int movedY) {
-    cout << rectToCrop.x << "|" << rectToCrop.y << endl;
     if(IsValidPos(r, movedX, movedY)) {
 	r.Move(movedX, movedY);
 	r.ResetStart();
@@ -543,6 +582,38 @@ void SetRectPos(NbcRect &r, Point pos) {
     else r.y = newY;
 
     r.ResetStart();
+}
+
+void IncreaseRectSize(RectSizeDirection direction, NbcRect &r, int increaseUnit) {
+    NbcRect newRect = r;
+    switch(direction) {
+    case RectSizeDirection::right:
+	newRect.width += increaseUnit;
+	break;
+    case RectSizeDirection::down:
+	newRect.height += increaseUnit;
+	break;
+    }
+    if(IsValidPos(newRect)) {
+	r.width = newRect.width;
+	r.height = newRect.height;
+    }
+}
+
+void DecreaseRectSize(RectSizeDirection direction, NbcRect &r, int increaseUnit) {
+    NbcRect newRect = r;
+    switch(direction) {
+    case RectSizeDirection::left:
+	newRect.width -= increaseUnit;
+	break;
+    case RectSizeDirection::up:
+	newRect.height -= increaseUnit;
+	break;
+    }
+    if(IsValidPos(newRect)) {
+	r.width = newRect.width;
+	r.height = newRect.height;
+    }
 }
 
 void UpdatePreviewWindow() {

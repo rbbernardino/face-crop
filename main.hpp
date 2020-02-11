@@ -15,10 +15,7 @@ namespace fs = std::experimental::filesystem;
 
 //------------------------------------------------------------------------------
 // -------------------- Rectangle definitions --------------------------------
-struct Offset {
-  int left, right, up, down;
-  Offset(int l, int r, int u, int d) { left = l; right = r; up = u; down = d; }
-};
+enum RectSizeDirection { up, down, left, right };
 
 //-----------------------------------------------------------------------------
 //----------------- Functions Declarations --------------------------------
@@ -30,8 +27,11 @@ void MouseHandler(int event, int x, int y, int flags, void* userdata);
 
 void MoveRect(NbcRect &r, int movedX, int movedY);
 void MouseMoveRect(NbcRect &r, Point mouseEnd);
-bool IsValidPos(NbcRect &r, int movedX, int movedY);
+bool IsValidPos(NbcRect r);
+bool IsValidPos(NbcRect r, int movedX, int movedY);
 void SetRectPos(NbcRect &r, Point pos);
+void IncreaseRectSize(RectSizeDirection direction, NbcRect &rectToCrop, int increaseUnit);
+void DecreaseRectSize(RectSizeDirection direction, NbcRect &rectToCrop, int increaseUnit);
 
 void InitializeRectangles();
 void UpdateMainWindow();
