@@ -33,7 +33,7 @@ const string SUFIX = "_crop";
 const fs::path DONE_DIR = fs::path("done");
 const fs::path LATER_DIR = fs::path("later");
 const fs::path CROPPED_DIR = fs::path("cropped");
-const fs::path NOFACE_DIR = fs::path("noface"); // TODO 
+const fs::path NOFACE_DIR = fs::path("noface");
 const fs::path RECTPOS_DIR = fs::path("rectpos");
 const string OUT_EXT = ".png";
 
@@ -218,7 +218,7 @@ int CropFile(fs::path IN_fpath) {
     UpdatePreviewWindow(); // will open crop preview window
   
     // waits for user keyboard input
-    bool done=false, do_crop=false, crop_later=false, ignore=false, back=false;
+    bool done=false, do_crop=false, crop_later=false, no_face=false, ignore=false, back=false;
     do {
 	int key = waitKey();
 
@@ -254,8 +254,9 @@ int CropFile(fs::path IN_fpath) {
 	    UpdateMainWindow();
 	    break;
 	  
-	    // TODO move image to later
 	case 32: // SPC
+	    done = true;
+	    no_face = true;
 	    UpdateMainWindow();
 	    UpdatePreviewWindow();
 	    break;
@@ -373,30 +374,22 @@ int CropFile(fs::path IN_fpath) {
 	else
 	    imgCropped = previewImg;
 
-	// prepara nome do arquivo de saída
+	// saves cropped image to file
 	string OUT_fname = IN_fname .concat( SUFIX + OUT_EXT ).string();
-
-	// gera caminho com nome para arquivo de saída
 	fs::path OUT_fpath = IN_fdir / CROPPED_DIR / OUT_fname;
-
-	// Save texture in "cropped" folder
 	if(!fs::exists( IN_fdir / CROPPED_DIR ))
 	    fs::create_directory( IN_fdir / CROPPED_DIR );
-
-	// escreve arquivo de saída
 	imwrite(OUT_fpath.string(), imgCropped);
 
-	// create done folder if doens't exist yet
+	// move original image to "done" folder
 	if(!fs::exists( IN_fdir / DONE_DIR ))
 	    fs::create_directory( IN_fdir / DONE_DIR );
-
-	// move original image to "done" folder
 	fs::rename(IN_fpath, IN_fdir / DONE_DIR / IN_fpath.filename());
 
-	// save rectangle position
+	// saves crop position to file
 	if(!fs::exists( IN_fdir / RECTPOS_DIR ))
 	    fs::create_directory( IN_fdir / RECTPOS_DIR );
-	fs::path rectPos_fname = fs::path(cur_fname + "_RectPos.csv");
+	fs::path rectPos_fname = fs::path(cur_fname + "_cropRect.csv");
 	fs::path rectPos_fpath = IN_fdir / RECTPOS_DIR / rectPos_fname;
 	std::ofstream rectPosOutFile(rectPos_fpath.string());
 	rectPosOutFile << cur_fname << ","
@@ -405,34 +398,33 @@ int CropFile(fs::path IN_fpath) {
 		       << recWidth << ","
 		       << recHeight << endl;
 	
-        // imprime resultado
 	cout << " | " << "cropped!" << endl;
-
 	return NextDirection::fileRemoved;
     }
     else if(crop_later){
-	// create later folder if doesn't exist yet
+	// moves original image to "later" folder
 	if(!fs::exists( IN_fdir / LATER_DIR ))
 	    fs::create_directory( IN_fdir / LATER_DIR );
-
-	// move to later folder
 	fs::rename(IN_fpath, IN_fdir / LATER_DIR / IN_fpath.filename());
 
-	// imprime resultado
 	cout << " | " << "left for later..." << endl;
+	return NextDirection::fileRemoved;
+    }
+    else if(no_face){
+	// moves original image to "noface" folder
+	if(!fs::exists( IN_fdir / NOFACE_DIR ))
+	    fs::create_directory( IN_fdir / NOFACE_DIR );
+	fs::rename(IN_fpath, IN_fdir / NOFACE_DIR / IN_fpath.filename());
 
+	cout << " | " << "moved to \"noface\" dir..." << endl;
 	return NextDirection::fileRemoved;
     }
     else if(back) {
-	// imprime resultado
 	cout << " | " << "go back one image!" << endl;
-
   	return NextDirection::goBack;
     }
     else if(ignore){
-	// imprime resultado
 	cout << " | " << "ignored!" << endl;
-
 	return NextDirection::goForward;
     }
 }
@@ -445,24 +437,15 @@ void MouseHandler(int event, int x, int y, int flags, void* userdata) {
     switch(event) {
     case EVENT_RBUTTONDOWN:
 	mouseStart = Point(x, y);
-
 	SetRectPos(rectToCrop, Point(x, y));
-	// mousePressed = true;
-	// SelectRectangle(x, y);
-	// MouseMoveRect(selectedRect, Point(x, y));
-	
 	UpdateMainWindow();
 	break;
 
     case EVENT_RBUTTONUP:
 	mouseStart = Point(x, y);
-	
-	// updates new final rectangle location
 	rectToCrop.ResetStart();
-
 	MouseMoveRect(rectToCrop, Point(x, y));
 	UpdateMainWindow();
-	
 	mousePressed = false;
 	break;
 
