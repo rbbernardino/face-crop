@@ -1,22 +1,30 @@
 cmake_minimum_required(VERSION 2.8)
-project( facecrop )
+
+project( facecrop ) # PROJECT NAME
+
+# set output dir of "make" (binary executable)
+# set(EXECUTABLE_OUTPUT_PATH ${CMAKE_SOURCE_DIR}/build)
+
+# set output dir of library files (.so??)
+# set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR})
+
+add_definitions(-std=c++14)
+
 find_package( OpenCV REQUIRED )
-FIND_PACKAGE( Boost COMPONENTS filesystem system REQUIRED )
+FIND_PACKAGE( Boost COMPONENTS system REQUIRED )
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-# C++14: set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1y")
+set( HEADERS main.hpp NbcRect.hpp Zoom.hpp )
+set( SOURCES main.cpp NbcRect.cpp Zoom.cpp )
 
-set(HEADERS NbcRect.h Zoom.hpp main.h)
-set(SOURCES main.cpp NbcRect.cpp Zoom.cpp)
+include_directories("lib")
 
-add_executable( CropNabuco ${SOURCES} ${HEADERS} )
-target_link_libraries( facecrop
+# set as static build, so the client doesn't need to have any lib installed
+SET(BUILD_SHARED_LIBRARIES OFF)
+
+add_executable( facecrop ${SOURCES} ${HEADERS} )
+target_link_libraries(
+  facecrop
   ${OpenCV_LIBS}
-  ${Boost_FILESYSTEM_LIBRARY}
   ${Boost_SYSTEM_LIBRARY}
+  stdc++fs
   )
-
-# to add a library / header files for several targets
-# set(HEADER_FILES ${YOUR_DIRECTORY}/file1.h ${YOUR_DIRECTORY}/file2.h)
-# add_library(mylib libsrc.cpp ${HEADER_FILES})
-# add_executable(myexec execfile.cpp ${HEADER_FILES})

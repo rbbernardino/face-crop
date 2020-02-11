@@ -42,3 +42,4 @@ A tool for creating face detection ground-truth either from pre-cropped dataset 
 * **1, 2, 3 ... 0** - changes the `moveUnit` to 1, 5, 15 ... 500, 1000 pixels per move
 * **z** - alternates between `Normal Mode` and `Split Crop Mode`
 * **SPC** - move image to `no-face`
+* **i** - invert colors (only displayed image, not the cropped result)

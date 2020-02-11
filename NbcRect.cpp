@@ -1,4 +1,4 @@
-#include "NbcRect.h"
+#include "NbcRect.hpp"
 
 NbcRect::NbcRect() : cv::Rect(){}
 
