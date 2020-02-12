@@ -10,9 +10,10 @@ A tool for creating face detection ground-truth either from pre-cropped dataset 
 
 ### How to Run ###
 
-- `./facecrop [-f] [-d] <FILE_OR_DIRECTORY>`
+- `./facecrop [-f] [-d] <FILE_OR_DIRECTORY> -g <GT_FILE>`
 	- `-f filename`, only one file will be processed
 	- `-d directory`, **all** files in `directory` will be processed
+    - `-g gt_file`, tsv file with `file_name`, `x`, `y`, `width`, `height`
 
 ### Crop Modes ###
 

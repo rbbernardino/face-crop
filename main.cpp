@@ -2,6 +2,9 @@
 #include <stdlib.h>
 #include <string>
 #include <array>
+#include <map>
+#include <fstream> // read file streams
+#include <sstream> // read string stream from file
 
 #include "Zoom.hpp"
 #include "main.hpp"
@@ -11,13 +14,14 @@ using namespace cv;
 namespace fs = std::experimental::filesystem;
 
 //-----------------------------------------------------------------------------
-const int recWidth = 50;
-const int recHeight = 20;
+const int recWidth = 10; // TODO option to receive as parameter
+const int recHeight = 10;
 const Scalar rectMovingColor = CV_RGB(144, 0, 255);
 const Scalar rectResizingColor = CV_RGB(242, 245, 66);
 
 //const Size IMG_WIN_SIZE = Size(1080, 1920);
 const Size IMG_WIN_SIZE = Size(800, 800);
+// const int PREVIEW_WIN_WIDTH = recWidth * 5;
 const int PREVIEW_WIN_WIDTH = recWidth * 5;
 
 // set rectangles properties
@@ -48,6 +52,10 @@ Mat imgOriginal, imgMarked, previewImg;
 
 // keeps current filename to show on image
 string cur_fname;
+
+// whether has GT file
+bool hasGT;
+std::map<string, cv::Rect> gtRects;
 
 // whether should apply negative filter to shown marked image
 bool negativeFilt = false;
@@ -92,6 +100,7 @@ int main(int argc, char *argv[])
     args::HelpFlag help(parser, "help", "Display this help menu", {'h', "help"});
     args::ValueFlag<std::string> pImagePath(parser, "file", "The input image", {'f'});
     args::ValueFlag<std::string> pDirectoryPath(parser, "directory", "The input directory", {'d'});
+    args::ValueFlag<std::string> pGTFilePath(parser, "directory", "Ground-truth TSV file with filename, x, y, width, height", {'g'});
 
     try {
 	parser.ParseCLI(argc, argv);
@@ -116,6 +125,20 @@ int main(int argc, char *argv[])
 
     if(pImagePath) inputType = InType::file;
     if(pDirectoryPath) inputType = InType::dir;
+
+    if(pGTFilePath) {
+	hasGT = true;
+	string line;
+	std::ifstream infile(args::get(pGTFilePath));
+	while (std::getline(infile, line))
+	{
+	    std::istringstream iss(line);
+	    string imagename;
+	    int x, y, width, height;
+	    if(!(iss >> imagename >> x >> y >> width >> height)) { break; }
+	    gtRects[imagename] = cv::Rect(x, y, width, height);
+	}
+    }
 
     // open the main window and set mouse input detection
     namedWindow(MAIN_WINDOW_NAME, WINDOW_NORMAL | CV_GUI_NORMAL);
@@ -389,10 +412,11 @@ int CropFile(fs::path IN_fpath) {
 	// saves crop position to file
 	if(!fs::exists( IN_fdir / RECTPOS_DIR ))
 	    fs::create_directory( IN_fdir / RECTPOS_DIR );
-	fs::path rectPos_fname = fs::path(cur_fname + "_cropRect.csv");
+	fs::path rectPos_fname = fs::path(cur_fname + "_cropRect.tsv");
 	fs::path rectPos_fpath = IN_fdir / RECTPOS_DIR / rectPos_fname;
 	std::ofstream rectPosOutFile(rectPos_fpath.string());
-	rectPosOutFile << cur_fname << ","
+	rectPosOutFile << "filename,x,y,width,height\n"
+		       << cur_fname << ","
 		       << rectToCrop.x << ","
 		       << rectToCrop.y << ","
 		       << recWidth << ","
@@ -478,12 +502,22 @@ void MouseHandler(int event, int x, int y, int flags, void* userdata) {
 
 // the are drawn from the upper left corner point
 void InitializeRectangles() {
-    int ptX, ptY;
+    int ptX = 0, ptY = 0, recWidth1 = 10, recHeight1 = 10;
 
-    // NorthWest
-    ptX = 0;
-    ptY = 0;
-    rectToCrop = NbcRect(ptX, ptY, recWidth, recHeight, rectMovingColor);
+    if(hasGT) {
+	if(gtRects.find(cur_fname) != gtRects.end()) {
+	    ptX = gtRects[cur_fname].x;
+	    ptY = gtRects[cur_fname].y;
+	    recWidth1 = gtRects[cur_fname].width;
+	    recHeight1 = gtRects[cur_fname].height;
+	}
+    }
+    rectToCrop = NbcRect(ptX, ptY, recWidth1, recHeight1, rectMovingColor);
+    if(!IsValidPos(rectToCrop)) {
+	cout << "\nERROR: GT file contains face rect outside image area: "
+	     << cur_fname << endl;
+	exit(1);
+    }
 }
 
 void UpdateMainWindow() {
@@ -607,7 +641,7 @@ void UpdatePreviewWindow() {
     newSize.width = rectToCrop.width  * resizeFactor;
     newSize.height = rectToCrop.height  * resizeFactor;
   
-    resizeWindow(DETAIL_WINDOW_NAME, newSize.width, newSize.height);
+    // resizeWindow(DETAIL_WINDOW_NAME, newSize.width, newSize.height);
     imshow(DETAIL_WINDOW_NAME, previewImg);
 }
 
