@@ -9,6 +9,8 @@
 #include "Zoom.hpp"
 #include "main.hpp"
 
+#include "alphanum.hpp"
+
 using namespace std;
 using namespace cv;
 namespace fs = std::experimental::filesystem;
@@ -56,6 +58,7 @@ string cur_fname;
 // whether has GT file
 bool hasGT;
 std::map<string, cv::Rect> gtRects;
+bool keepRect = false;
 
 // whether should apply negative filter to shown marked image
 bool negativeFilt = false;
@@ -69,7 +72,7 @@ int mouseMoveUnit = 1;
 bool arrowsToIncreaseSize = false;
 
 // hold rectangles data
-NbcRect rectToCrop;
+NbcRect rectToCrop = NbcRect(0, 0, 10, 10, rectMovingColor);
 
 void PrintHelp(char *argv[]) {
     cout << string(argv[0]) + " -f FILE_PATH" << endl;
@@ -81,7 +84,6 @@ void PrintHelp(char *argv[]) {
 }
 
 // ----------------------------------------------------------------------------
-// TODO adicionar receber definicoes de retangulo (file)
 int main(int argc, char *argv[])
 {
     string commandsHint =
@@ -100,7 +102,8 @@ int main(int argc, char *argv[])
     args::HelpFlag help(parser, "help", "Display this help menu", {'h', "help"});
     args::ValueFlag<std::string> pImagePath(parser, "file", "The input image", {'f'});
     args::ValueFlag<std::string> pDirectoryPath(parser, "directory", "The input directory", {'d'});
-    args::ValueFlag<std::string> pGTFilePath(parser, "directory", "Ground-truth TSV file with filename, x, y, width, height", {'g'});
+    args::ValueFlag<std::string> pGTFilePath(parser, "gt", "Ground-truth TSV file with \"filename, x, y, width, height\"", {'g'});
+    args::Flag pKeepRect(parser, "keepRect", "Keep rectangle if no GT found or no GT file provided", {'k'});
 
     try {
 	parser.ParseCLI(argc, argv);
@@ -125,6 +128,7 @@ int main(int argc, char *argv[])
 
     if(pImagePath) inputType = InType::file;
     if(pDirectoryPath) inputType = InType::dir;
+    if(pKeepRect) keepRect = true;
 
     if(pGTFilePath) {
 	hasGT = true;
@@ -141,12 +145,12 @@ int main(int argc, char *argv[])
     }
 
     // open the main window and set mouse input detection
-    namedWindow(MAIN_WINDOW_NAME, WINDOW_NORMAL | CV_GUI_NORMAL);
+    namedWindow(MAIN_WINDOW_NAME, WINDOW_NORMAL);
     resizeWindow(MAIN_WINDOW_NAME, IMG_WIN_SIZE.width, IMG_WIN_SIZE.height);
     setMouseCallback(MAIN_WINDOW_NAME, MouseHandler, NULL);
 
     // open crop preview window
-    namedWindow(DETAIL_WINDOW_NAME, WINDOW_NORMAL | CV_GUI_NORMAL);
+    namedWindow(DETAIL_WINDOW_NAME, WINDOW_NORMAL);
     double resizeFactor = PREVIEW_WIN_WIDTH/(double)recWidth; 
     resizeWindow(DETAIL_WINDOW_NAME, (int)recWidth*resizeFactor, (int)recHeight*resizeFactor);
 
@@ -161,12 +165,11 @@ int main(int argc, char *argv[])
     else {
 	fs::path dirpath = fs::path(args::get(pDirectoryPath));
 
-	// store paths, so we can sort them later
-	vector<fs::path> all_paths;
-
 	// copy all paths to vector and sort them
+	vector<fs::path> all_paths;
 	copy(fs::directory_iterator(dirpath), fs::directory_iterator(), back_inserter(all_paths));
 	sort(all_paths.begin(), all_paths.end());
+	sort(all_paths.begin(), all_paths.end(), doj::alphanum_less<std::string>());
 	
 	for(int i = 0; i < all_paths.size();) {
 	    fs::path fpath = all_paths[i];
@@ -176,7 +179,7 @@ int main(int argc, char *argv[])
 		if(result == fileRemoved || result == notImage) {
 		    // remove fpath from list
 		    all_paths.erase(all_paths.begin() + i);
-		    if(i - 1 >= 0)
+		    if(i >= all_paths.size() && (i-1 >= 0))
 			i--;
 		}
 		else if(result == goBack){
@@ -392,10 +395,7 @@ int CropFile(fs::path IN_fpath) {
     if(do_crop) {
 	// crop the image
 	Mat imgCropped;
-	if(previewImg.rows > previewImg.cols)
-	    imgCropped = previewImg.t();
-	else
-	    imgCropped = previewImg;
+	imgCropped = previewImg;
 
 	// saves cropped image to file
 	string OUT_fname = IN_fname .concat( SUFIX + OUT_EXT ).string();
@@ -419,8 +419,8 @@ int CropFile(fs::path IN_fpath) {
 		       << cur_fname << ","
 		       << rectToCrop.x << ","
 		       << rectToCrop.y << ","
-		       << recWidth << ","
-		       << recHeight << endl;
+		       << rectToCrop.width << ","
+		       << rectToCrop.height << endl;
 	
 	cout << " | " << "cropped!" << endl;
 	return NextDirection::fileRemoved;
@@ -502,20 +502,34 @@ void MouseHandler(int event, int x, int y, int flags, void* userdata) {
 
 // the are drawn from the upper left corner point
 void InitializeRectangles() {
-    int ptX = 0, ptY = 0, recWidth1 = 10, recHeight1 = 10;
-
+    int ptX, ptY, recWidth1, recHeight1;
+    bool faceRectGTExists = false;
     if(hasGT) {
 	if(gtRects.find(cur_fname) != gtRects.end()) {
 	    ptX = gtRects[cur_fname].x;
 	    ptY = gtRects[cur_fname].y;
 	    recWidth1 = gtRects[cur_fname].width;
 	    recHeight1 = gtRects[cur_fname].height;
+	    faceRectGTExists = true;
 	}
     }
+
+    if(!faceRectGTExists) {
+	if(!keepRect) {
+	    ptX = 0, ptY = 0;
+	    recWidth1 = 10, recHeight1 = 10;
+	} else {
+	    ptX = rectToCrop.x, ptY = rectToCrop.y;
+	    recWidth1 = rectToCrop.width, recHeight1 = rectToCrop.height;
+	}
+    }
+
     rectToCrop = NbcRect(ptX, ptY, recWidth1, recHeight1, rectMovingColor);
     if(!IsValidPos(rectToCrop)) {
 	cout << "\nERROR: GT file contains face rect outside image area: "
-	     << cur_fname << endl;
+	     << cur_fname
+	     << "rect (" << ptX << ", " << ptY << ", " << recWidth1 << ", " << recHeight1 << ")"
+	     << endl;
 	exit(1);
     }
 }
@@ -534,7 +548,7 @@ void UpdateMainWindow() {
     Mat imgView = Zoom::Apply(imgMarked);
 
     // prints filename on upper left corner
-    cv::putText(imgView, cur_fname, Point(5,35-(5*Zoom::GetZoomState())), CV_FONT_VECTOR0, 0.35*abs(4-Zoom::GetZoomState()), CV_RGB(0, 0, 0));
+    cv::putText(imgView, cur_fname, Point(5,35-(5*Zoom::GetZoomState())), FONT_HERSHEY_DUPLEX, 0.35*abs(4-Zoom::GetZoomState()), CV_RGB(0, 0, 0));
 
     // apply appropriate filters and update windows
     if(negativeFilt)

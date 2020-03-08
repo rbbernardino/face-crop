@@ -19,7 +19,7 @@ set( SOURCES main.cpp NbcRect.cpp Zoom.cpp )
 include_directories("lib")
 
 # set as static build, so the client doesn't need to have any lib installed
-SET(BUILD_SHARED_LIBRARIES OFF)
+# SET(BUILD_SHARED_LIBRARIES OFF)
 
 add_executable( facecrop ${SOURCES} ${HEADERS} )
 target_link_libraries(

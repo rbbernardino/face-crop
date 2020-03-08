@@ -4,6 +4,9 @@ NbcRect::NbcRect() : cv::Rect(){}
 
 NbcRect::NbcRect(int ptX, int ptY, int width, int height, cv::Scalar color) : cv::Rect(ptX, ptY, width, height) {
   mvStart = cv::Point(ptX, ptY);
+  this->x = ptX;
+  this->y = ptY;
+  this->height = height;
   this->color = color;
 }
 

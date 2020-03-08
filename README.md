@@ -31,7 +31,7 @@ A tool for creating face detection ground-truth either from pre-cropped dataset 
 
 ### Mouse Commands ###
 
-- [ ] **Left click** and drag anywhere in the image to move the crop rectangle
+- [x] **Left click** and drag anywhere in the image to move the crop rectangle
 - [x] **Right click** anywhere in the image to move the crop rectangle to the clicked position
 
 ### Keyboard Shortcuts ###
